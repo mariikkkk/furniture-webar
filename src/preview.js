@@ -2,30 +2,23 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { lightScene } from './assembly.js'
 
-export function createPreview(canvas, root) {
+export function createPreview(canvas, root, panel) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.shadowMap.enabled = true
 
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0xe7ebdf)
-  scene.fog = new THREE.Fog(0xe7ebdf, 3, 7)
+  scene.background = new THREE.Color(0xeeeeee)
   scene.add(root)
   lightScene(scene)
 
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(16, 16),
-    new THREE.MeshStandardMaterial({ color: 0xe1e6d7 })
+    new THREE.ShadowMaterial({ opacity: 0.2 })
   )
   floor.rotation.x = -Math.PI / 2
   floor.receiveShadow = true
   scene.add(floor)
-
-  const grid = new THREE.GridHelper(16, 64, 0xb0b9a6, 0xbdc6b4)
-  grid.position.y = 0.001
-  grid.material.transparent = true
-  grid.material.opacity = 0.45
-  scene.add(grid)
 
   const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 30)
   camera.position.set(0.62, 1.52, 1.69)
@@ -41,12 +34,15 @@ export function createPreview(canvas, root) {
     const { clientWidth: width, clientHeight: height } = canvas
     if (!width || !height) return
     renderer.setSize(width, height, false)
-    camera.aspect = width / height
-    camera.fov = camera.aspect < 1 ? 46 : 40
-    camera.updateProjectionMatrix()
+    const visibleHeight = height - panel.clientHeight
+    const halfAngle = Math.tan(THREE.MathUtils.degToRad(20))
+    camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(halfAngle * height / Math.min(width, visibleHeight)))
+    camera.setViewOffset(width, height, 0, panel.clientHeight / 2, width, height)
   }
 
-  new ResizeObserver(resize).observe(canvas)
+  const sizeObserver = new ResizeObserver(resize)
+  sizeObserver.observe(canvas)
+  sizeObserver.observe(panel)
 
   function resume() {
     scene.add(root)

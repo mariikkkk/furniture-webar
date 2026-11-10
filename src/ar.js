@@ -47,9 +47,21 @@ export function startAr(engine, canvas, root, onPlacement, onError) {
   let placed = false
   let stopped = false
 
+  function resizeCanvas() {
+    const ratio = Math.min(window.devicePixelRatio, 2)
+    const width = Math.round(canvas.clientWidth * ratio)
+    const height = Math.round(canvas.clientHeight * ratio)
+    if (!width || !height) return
+    if (canvas.width !== width) canvas.width = width
+    if (canvas.height !== height) canvas.height = height
+  }
+
+  const sizeObserver = new ResizeObserver(resizeCanvas)
+
   function stop() {
     if (stopped) return
     stopped = true
+    sizeObserver.disconnect()
     try {
       engine.stop()
     } finally {
@@ -73,6 +85,7 @@ export function startAr(engine, canvas, root, onPlacement, onError) {
     {
       name: 'furniture',
       onStart() {
+        resizeCanvas()
         const xr = engine.Threejs.xrScene()
         camera = xr.camera
         camera.position.set(0, 1.5, 0)
@@ -107,19 +120,22 @@ export function startAr(engine, canvas, root, onPlacement, onError) {
   ])
 
   try {
+    resizeCanvas()
     engine.run({ canvas })
+    sizeObserver.observe(canvas)
   } catch (error) {
     stop()
     throw error
   }
 
   function place() {
-    if (!reticle.visible) return
+    if (!reticle.visible) return false
     placed = true
     reticle.visible = false
     root.position.copy(reticle.position)
     root.rotation.y = Math.atan2(camera.position.x - root.position.x, camera.position.z - root.position.z)
     root.visible = true
+    return true
   }
 
   return { place, stop }

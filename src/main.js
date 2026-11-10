@@ -11,26 +11,25 @@ const arCanvas = element('ar-view')
 const arToggle = element('ar-toggle')
 const placeButton = element('place')
 const sceneHelp = element('scene-help')
+const instructions = element('instructions')
 const back = element('back')
 const next = element('next')
 const replay = element('replay')
-const preview = createPreview(previewCanvas, assembly.root)
+const preview = createPreview(previewCanvas, assembly.root, element('panel'))
 
 let step = 0
 let animating = false
 let engine
 let ar
 
-const progress = steps.map(({ label }) => {
-  const item = document.createElement('li')
-  item.textContent = label
-  element('progress').append(item)
-  return item
-})
+function showMessage(message = '') {
+  sceneHelp.textContent = message
+  sceneHelp.hidden = !message
+}
 
 function updateInstruction() {
   const { title, text, hardware } = steps[step]
-  element('step-number').textContent = step === 0 ? 'ПЕРЕД СБОРКОЙ' : `ШАГ ${step} ИЗ ${steps.length - 1}`
+  element('step-number').textContent = step === 0 ? 'Перед сборкой' : `Шаг ${step} из ${steps.length - 1}`
   element('step-title').textContent = title
   element('step-text').textContent = text
   element('hardware').hidden = !hardware
@@ -38,11 +37,6 @@ function updateInstruction() {
     element('hardware-code').textContent = hardware.code
     element('hardware-text').textContent = hardware.text
   }
-
-  progress.forEach((item, index) => {
-    if (index === step) item.setAttribute('aria-current', 'step')
-    else item.removeAttribute('aria-current')
-  })
 
   back.disabled = animating || step === 0
   replay.disabled = animating || step === 0
@@ -73,7 +67,7 @@ function goToStep(from, to) {
   requestAnimationFrame(draw)
 }
 
-function closeAr(message = 'Перетаскивайте, чтобы повернуть модель') {
+function closeAr(message) {
   try {
     ar?.stop()
   } finally {
@@ -83,8 +77,8 @@ function closeAr(message = 'Перетаскивайте, чтобы повер�
     preview.resume()
     placeButton.hidden = true
     placeButton.disabled = true
-    element('scene-label').textContent = '3D-ПРОСМОТР'
-    sceneHelp.textContent = message
+    instructions.hidden = false
+    showMessage(message)
     arToggle.textContent = 'Открыть в AR'
   }
 }
@@ -96,19 +90,19 @@ async function toggleAr() {
   }
 
   if (!window.isSecureContext || !navigator.mediaDevices) {
-    sceneHelp.textContent = 'Для AR откройте страницу по HTTPS на телефоне с камерой.'
+    showMessage('Для AR откройте страницу по HTTPS на телефоне с камерой.')
     return
   }
 
   if (!engine) {
     arToggle.disabled = true
-    sceneHelp.textContent = 'Загружаем AR…'
+    showMessage('Загружаем AR…')
     try {
       engine = await loadArEngine()
       arToggle.textContent = 'Включить камеру'
-      sceneHelp.textContent = 'Нажмите «Включить камеру» и разрешите доступ.'
+      showMessage('Нажмите «Включить камеру» и разрешите доступ.')
     } catch (error) {
-      sceneHelp.textContent = error.message
+      showMessage(error.message)
     } finally {
       arToggle.disabled = false
     }
@@ -119,14 +113,14 @@ async function toggleAr() {
   previewCanvas.hidden = true
   arCanvas.hidden = false
   placeButton.hidden = false
-  sceneHelp.textContent = 'Разрешите доступ к камере'
-  element('scene-label').textContent = 'ДОПОЛНЕННАЯ РЕАЛЬНОСТЬ'
+  instructions.hidden = true
+  showMessage('Разрешите доступ к камере')
   arToggle.textContent = 'Вернуться в 3D'
 
   try {
     ar = startAr(engine, arCanvas, assembly.root, ready => {
       const message = ready ? 'Поставьте комплект на пол' : 'Наведите камеру на пол и слегка подвигайте телефон'
-      if (sceneHelp.textContent !== message) sceneHelp.textContent = message
+      if (sceneHelp.textContent !== message) showMessage(message)
       placeButton.disabled = !ready
     }, closeAr)
   } catch (error) {
@@ -137,9 +131,10 @@ async function toggleAr() {
 
 arToggle.addEventListener('click', toggleAr)
 placeButton.addEventListener('click', () => {
-  ar.place()
+  if (!ar?.place()) return
   placeButton.hidden = true
-  sceneHelp.textContent = 'Модель размещена. Выберите шаг сборки.'
+  instructions.hidden = false
+  showMessage()
 })
 back.addEventListener('click', () => goToStep(step, step - 1))
 next.addEventListener('click', () => goToStep(step, step + 1))
