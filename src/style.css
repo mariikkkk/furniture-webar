@@ -44,6 +44,7 @@ canvas {
   top: 0;
   padding-top: max(8px, env(safe-area-inset-top));
   display: flex;
+  gap: 6px;
   align-items: start;
   pointer-events: none;
 }

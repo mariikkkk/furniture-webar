@@ -13,6 +13,8 @@ export function startWebXr(overlay, root, onPlacement, onExit, onStatus, onTrack
   const surfaceNormal = new THREE.Vector3()
   const anchorRotation = new THREE.Quaternion()
   const anchorAngles = new THREE.Euler(0, 0, 0, 'YXZ')
+  const cameraOffset = new THREE.Vector3()
+  const previousOffset = new THREE.Vector3()
   const reticle = new THREE.Mesh(
     new THREE.RingGeometry(0.095, 0.115, 32).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ color: 0xffc059, side: THREE.DoubleSide })
@@ -26,10 +28,9 @@ export function startWebXr(overlay, root, onPlacement, onExit, onStatus, onTrack
   let hitSource
   let lowerHitSource
   let stopped = false
-  let placed = false
+  let placement
   let canPlaceInFront = false
   let anchor
-  let needsAnchor = false
 
   function dispose() {
     anchor?.delete()
@@ -45,34 +46,61 @@ export function startWebXr(overlay, root, onPlacement, onExit, onStatus, onTrack
     if (session) session.end().catch(dispose)
   }
 
+  function updatePlacement(time, frame, referenceSpace, viewer) {
+    if (placement.jumped) return
+
+    const cameraTracked = viewer && !viewer.emulatedPosition
+    if (cameraTracked && placement.needsAnchor) {
+      placement.needsAnchor = false
+      if (typeof frame.createAnchor === 'function') {
+        const currentPlacement = placement
+        anchorRotation.setFromEuler(anchorAngles.set(0, root.rotation.y, 0))
+        const transform = new XRRigidTransform(root.position, anchorRotation)
+        frame.createAnchor(transform, referenceSpace).then(created => {
+          if (stopped || placement !== currentPlacement) created.delete()
+          else anchor = created
+        }).catch(() => {})
+      }
+    }
+
+    const pose = anchor && cameraTracked ? frame.getPose(anchor.anchorSpace, referenceSpace) : null
+    if (!cameraTracked || (anchor && (!pose || pose.emulatedPosition))) {
+      placement.recoverAt = Infinity
+      root.visible = false
+      onTracking(cameraTracked ? 'anchor-lost' : 'camera-lost')
+      return
+    }
+
+    const position = pose?.transform.position ?? root.position
+    cameraOffset.copy(position).sub(viewer.transform.position)
+    if (time - placement.lastFrame < 150 && cameraOffset.distanceTo(previousOffset) > 0.45) {
+      placement.jumped = true
+      root.visible = false
+      onTracking('jump')
+      return
+    }
+    placement.lastFrame = time
+    previousOffset.copy(cameraOffset)
+
+    if (placement.recoverAt === Infinity) placement.recoverAt = time + 200
+    root.visible = time >= placement.recoverAt
+    if (root.visible && pose) {
+      root.position.copy(position)
+      anchorRotation.copy(pose.transform.orientation)
+      root.rotation.y = anchorAngles.setFromQuaternion(anchorRotation).y
+    }
+    onTracking(root.visible ? 'tracked' : 'recovering')
+  }
+
   function draw(time, frame) {
-    if (!frame) return
+    if (!frame || stopped) return
 
     const referenceSpace = renderer.xr.getReferenceSpace()
     const viewer = frame.getViewerPose(referenceSpace)
     const tracked = Boolean(viewer && !viewer.emulatedPosition)
 
-    if (placed) {
-      if (needsAnchor && tracked) {
-        needsAnchor = false
-        if (typeof frame.createAnchor === 'function') {
-          anchorRotation.setFromEuler(anchorAngles.set(0, root.rotation.y, 0))
-          const transform = new XRRigidTransform(root.position, anchorRotation)
-          frame.createAnchor(transform, referenceSpace).then(created => {
-            if (stopped) created.delete()
-            else anchor = created
-          }).catch(() => {})
-        }
-      }
-
-      const pose = anchor && tracked ? frame.getPose(anchor.anchorSpace, referenceSpace) : null
-      root.visible = tracked && (!anchor || Boolean(pose))
-      if (pose) {
-        root.position.copy(pose.transform.position)
-        anchorRotation.copy(pose.transform.orientation)
-        root.rotation.y = anchorAngles.setFromQuaternion(anchorRotation).y
-      }
-      onTracking(root.visible)
+    if (placement) {
+      updatePlacement(time, frame, referenceSpace, viewer)
     } else {
       canPlaceInFront = tracked
       if (tracked) {
@@ -146,15 +174,22 @@ export function startWebXr(overlay, root, onPlacement, onExit, onStatus, onTrack
   start()
 
   function place() {
-    if (!reticle.visible && !canPlaceInFront) return false
+    if (placement || (!reticle.visible && !canPlaceInFront)) return false
     root.position.copy(reticle.visible ? reticle.position : pointInFront)
     root.rotation.y = Math.atan2(viewPosition.x - root.position.x, viewPosition.z - root.position.z)
     root.visible = true
-    placed = true
-    needsAnchor = true
+    placement = { needsAnchor: true, lastFrame: -Infinity, recoverAt: 0, jumped: false }
     reticle.visible = false
     return true
   }
 
-  return { place, stop }
+  function reposition() {
+    placement = undefined
+    anchor?.delete()
+    anchor = undefined
+    canPlaceInFront = false
+    root.visible = false
+  }
+
+  return { place, reposition, stop }
 }

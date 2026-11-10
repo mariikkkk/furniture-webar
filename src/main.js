@@ -8,6 +8,7 @@ const assembly = createAssembly()
 const element = id => document.getElementById(id)
 const previewCanvas = element('preview')
 const arToggle = element('ar-toggle')
+const repositionButton = element('reposition')
 const placeButton = element('place')
 const sceneHelp = element('scene-help')
 const arMode = element('ar-mode')
@@ -94,6 +95,7 @@ function closeAr(message) {
     preview.resume()
     placeButton.hidden = true
     placeButton.disabled = true
+    repositionButton.hidden = true
     instructions.hidden = false
     showMessage(message)
     arToggle.textContent = 'Открыть в AR'
@@ -128,8 +130,15 @@ function toggleAr() {
     placeButton.disabled = mode === 'waiting'
   }
 
-  function showTracking(tracked) {
-    const message = tracked ? '' : 'Трекинг потерян. Наведите камеру на место установки.'
+  function showTracking(status) {
+    let message = ''
+    if (status === 'jump') message = 'Положение резко изменилось. Нажмите «Переставить».'
+    if (status === 'camera-lost' || status === 'anchor-lost') {
+      message = 'Потеряли привязку. Наведите камеру на место установки и задержитесь.'
+    }
+    if (status === 'recovering') message = 'Восстанавливаем привязку…'
+    if (status === 'camera-lost') showDebug('WebXR потерял положение камеры.')
+    if (status === 'anchor-lost') showDebug('WebXR видит камеру, но потерял якорь модели.')
     if (sceneHelp.textContent !== message) showMessage(message)
   }
 
@@ -145,8 +154,17 @@ arToggle.addEventListener('click', toggleAr)
 placeButton.addEventListener('click', () => {
   if (!ar?.place()) return
   placeButton.hidden = true
+  repositionButton.hidden = false
   instructions.hidden = false
   showMessage()
+})
+repositionButton.addEventListener('click', () => {
+  ar.reposition()
+  repositionButton.hidden = true
+  placeButton.hidden = false
+  placeButton.disabled = true
+  instructions.hidden = true
+  showMessage('Наведите камеру на пол и слегка подвигайте телефон')
 })
 back.addEventListener('click', () => goToStep(step, step - 1))
 next.addEventListener('click', () => goToStep(step, step + 1))
