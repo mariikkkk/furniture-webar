@@ -1,6 +1,7 @@
 import { createAssembly } from './assembly.js'
 import { createPreview } from './preview.js'
 import { loadArEngine, startAr } from './ar.js'
+import { startWebXr } from './webxr.js'
 import { steps } from './steps.js'
 import './style.css'
 
@@ -21,6 +22,15 @@ let step = 0
 let animating = false
 let engine
 let ar
+let useWebXr = false
+
+if (navigator.xr) {
+  arToggle.disabled = true
+  navigator.xr.isSessionSupported('immersive-ar')
+    .then(supported => { useWebXr = supported })
+    .catch(() => {})
+    .finally(() => { arToggle.disabled = false })
+}
 
 function showMessage(message = '') {
   sceneHelp.textContent = message
@@ -94,7 +104,7 @@ async function toggleAr() {
     return
   }
 
-  if (!engine) {
+  if (!useWebXr && !engine) {
     arToggle.disabled = true
     showMessage('Загружаем AR…')
     try {
@@ -111,18 +121,22 @@ async function toggleAr() {
 
   preview.pause()
   previewCanvas.hidden = true
-  arCanvas.hidden = false
+  arCanvas.hidden = useWebXr
   placeButton.hidden = false
   instructions.hidden = true
   showMessage('Разрешите доступ к камере')
   arToggle.textContent = 'Вернуться в 3D'
 
+  function showPlacement(ready) {
+    const message = ready ? 'Поставьте комплект на пол' : 'Наведите камеру на пол и слегка подвигайте телефон'
+    if (sceneHelp.textContent !== message) showMessage(message)
+    placeButton.disabled = !ready
+  }
+
   try {
-    ar = startAr(engine, arCanvas, assembly.root, ready => {
-      const message = ready ? 'Поставьте комплект на пол' : 'Наведите камеру на пол и слегка подвигайте телефон'
-      if (sceneHelp.textContent !== message) showMessage(message)
-      placeButton.disabled = !ready
-    }, closeAr)
+    ar = useWebXr
+      ? startWebXr(document.querySelector('.app'), assembly.root, showPlacement, closeAr)
+      : startAr(engine, arCanvas, assembly.root, showPlacement, closeAr)
   } catch (error) {
     console.error(error)
     closeAr('Не удалось запустить AR. Можно продолжить в 3D.')
