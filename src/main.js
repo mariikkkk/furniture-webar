@@ -13,6 +13,7 @@ const arToggle = element('ar-toggle')
 const placeButton = element('place')
 const sceneHelp = element('scene-help')
 const instructions = element('instructions')
+const debugAr = new URLSearchParams(window.location.search).get('debug') === 'ar'
 const back = element('back')
 const next = element('next')
 const replay = element('replay')
@@ -126,10 +127,11 @@ function toggleAr() {
   showMessage('Запускаем AR…')
   arToggle.textContent = 'Вернуться в 3D'
 
-  function showPlacement(mode) {
+  function showPlacement(mode, detail) {
     let message = 'Наведите камеру на пол и слегка подвигайте телефон'
     if (mode === 'surface') message = 'Поверхность найдена'
     if (mode === 'manual') message = 'Ищем поверхность. Можно поставить модель перед собой.'
+    if (debugAr) message += ` | ${useWebXr ? 'WebXR' : '8th Wall'}. ${detail}`
     if (sceneHelp.textContent !== message) showMessage(message)
     const label = mode === 'manual' ? 'Поставить перед собой' : 'Поставить здесь'
     if (placeButton.textContent !== label) placeButton.textContent = label

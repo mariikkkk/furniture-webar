@@ -10,6 +10,7 @@ export function startWebXr(overlay, root, onPlacement, onExit) {
   const camera = new THREE.PerspectiveCamera()
   const viewPosition = new THREE.Vector3()
   const pointInFront = new THREE.Vector3()
+  const surfaceNormal = new THREE.Vector3()
   const reticle = new THREE.Mesh(
     new THREE.RingGeometry(0.095, 0.115, 32).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ color: 0xffc059, side: THREE.DoubleSide })
@@ -21,6 +22,7 @@ export function startWebXr(overlay, root, onPlacement, onExit) {
 
   let session
   let hitSource
+  let lowerHitSource
   let stopped = false
   let placed = false
   let canPlaceInFront = false
@@ -51,14 +53,20 @@ export function startWebXr(overlay, root, onPlacement, onExit) {
         pointInFront.add(viewPosition).y -= 0.15
       }
 
-      const hit = frame.getHitTestResults(hitSource)[0]
-      const pose = hit?.getPose(referenceSpace)
+      const hits = frame.getHitTestResults(hitSource)
+      const lowerHits = lowerHitSource ? frame.getHitTestResults(lowerHitSource) : []
+      const poses = [...hits, ...lowerHits].map(hit => hit.getPose(referenceSpace))
+      const pose = poses.find(candidate => {
+        if (!candidate) return false
+        return surfaceNormal.set(0, 1, 0).applyQuaternion(candidate.transform.orientation).y > 0.85
+      })
       reticle.visible = Boolean(pose)
       if (pose) {
         reticle.position.copy(pose.transform.position)
         reticle.quaternion.copy(pose.transform.orientation)
       }
-      onPlacement(reticle.visible ? 'surface' : canPlaceInFront ? 'manual' : 'waiting')
+      const detail = `Положение телефона: ${viewer ? 'есть' : 'нет'}. Пересечений: ${hits.length + lowerHits.length}.`
+      onPlacement(reticle.visible ? 'surface' : canPlaceInFront ? 'manual' : 'waiting', detail)
     }
 
     renderer.render(scene, camera)
@@ -87,6 +95,10 @@ export function startWebXr(overlay, root, onPlacement, onExit) {
 
       const viewer = await session.requestReferenceSpace('viewer')
       hitSource = await session.requestHitTestSource({ space: viewer })
+      if (!stopped && typeof XRRay === 'function') {
+        const offsetRay = new XRRay(undefined, { x: 0, y: -0.3, z: -1, w: 0 })
+        lowerHitSource = await session.requestHitTestSource({ space: viewer, offsetRay }).catch(() => null)
+      }
       if (stopped) return
       await renderer.xr.setSession(session)
       if (!stopped) renderer.setAnimationLoop(draw)

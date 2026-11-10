@@ -34,6 +34,7 @@ export function loadArEngine() {
 export function startAr(engine, canvas, root, onPlacement, onError) {
   const ray = new THREE.Raycaster()
   const center = new THREE.Vector2()
+  const lowerCenter = new THREE.Vector2(0, -0.45)
   const floor = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
   const point = new THREE.Vector3()
   const pointInFront = new THREE.Vector3()
@@ -103,6 +104,7 @@ export function startAr(engine, canvas, root, onPlacement, onError) {
         if (placed || !camera) return
 
         camera.updateMatrixWorld()
+        camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert()
         ray.setFromCamera(center, camera)
         const tracking = processCpuResult?.reality
         const tracksFloor = tracking?.trackingStatus === 'NORMAL'
@@ -111,11 +113,20 @@ export function startAr(engine, canvas, root, onPlacement, onError) {
           pointInFront.copy(ray.ray.direction).multiplyScalar(1.6).add(camera.position)
           pointInFront.y -= 0.15
         }
-        const hit = tracksFloor && ray.ray.intersectPlane(floor, point)
-        const ready = Boolean(hit && point.distanceTo(camera.position) < 4)
+        let ready = false
+        if (tracksFloor) {
+          const hit = ray.ray.intersectPlane(floor, point)
+          ready = Boolean(hit && point.distanceTo(camera.position) < 4)
+          if (!ready) {
+            ray.setFromCamera(lowerCenter, camera)
+            const lowerHit = ray.ray.intersectPlane(floor, point)
+            ready = Boolean(lowerHit && point.distanceTo(camera.position) < 4)
+          }
+        }
         reticle.visible = ready
         if (ready) reticle.position.copy(point).setY(0.005)
-        onPlacement(ready ? 'surface' : canPlaceInFront ? 'manual' : 'waiting')
+        const detail = `Трекинг: ${tracking?.trackingStatus ?? 'нет'}. Пол в пределах 4 м: ${ready ? 'да' : 'нет'}.`
+        onPlacement(ready ? 'surface' : canPlaceInFront ? 'manual' : 'waiting', detail)
       },
       onCameraStatusChange({ status }) {
         if (status === 'failed') fail('Камера недоступна. Проверьте разрешение в браузере.')
