@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ed">
+  <title>Интерактивная сборка мебели</title>
+</head>
+<body>
+  <main class="manual">
+    <header class="top">
+      <div>
+        <p class="eyebrow">ИНТЕРАКТИВНАЯ ИНСТРУКЦИЯ / 01</p>
+        <h1>Сборка табурета</h1>
+      </div>
+      <button class="mode" id="ar-toggle" type="button">Открыть в AR</button>
+    </header>
+
+    <section class="stage" id="stage" aria-label="Сцена сборки">
+      <canvas id="preview" aria-label="Вращаемая модель табурета"></canvas>
+      <canvas id="ar-view" aria-label="Вид с камеры" hidden></canvas>
+      <span class="scene-label" id="scene-label">3D-ПРОСМОТР</span>
+      <p class="scene-help" id="scene-help" role="status">Перетаскивайте, чтобы повернуть модель</p>
+      <button class="place" id="place" type="button" disabled hidden>Поставить здесь</button>
+    </section>
+
+    <section class="instructions" aria-label="Управление инструкцией">
+      <ol class="progress" id="progress" aria-label="Этапы сборки"></ol>
+      <div class="step" aria-live="polite">
+        <div>
+          <p class="eyebrow" id="step-number"></p>
+          <h2 id="step-title"></h2>
+          <p id="step-text"></p>
+        </div>
+        <div class="hardware" id="hardware" hidden>
+          <strong id="hardware-code"></strong>
+          <span id="hardware-text"></span>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="back" type="button">Назад</button>
+        <button id="replay" type="button">Повторить</button>
+        <button id="next" type="button">Далее →</button>
+      </div>
+    </section>
+
+    <footer>
+      <span>Демонстрационная модель</span>
+      <a href="https://github.com/8thwall/engine/blob/main/LICENSE">AR: 8th Wall</a>
+    </footer>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
