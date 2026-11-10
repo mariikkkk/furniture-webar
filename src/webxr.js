@@ -4,7 +4,7 @@ import { lightScene } from './assembly.js'
 export function startWebXr(overlay, root, onPlacement, onExit) {
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
   renderer.xr.enabled = true
-  renderer.xr.setReferenceSpaceType('local-floor')
+  renderer.xr.setReferenceSpaceType('local')
 
   const scene = new THREE.Scene()
   const camera = new THREE.PerspectiveCamera()
@@ -56,7 +56,7 @@ export function startWebXr(overlay, root, onPlacement, onExit) {
   async function start() {
     try {
       session = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['hit-test', 'local-floor', 'dom-overlay'],
+        requiredFeatures: ['hit-test', 'dom-overlay'],
         domOverlay: { root: overlay }
       })
       session.addEventListener('end', () => {
@@ -83,7 +83,10 @@ export function startWebXr(overlay, root, onPlacement, onExit) {
       if (!session) dispose()
       if (stopped) return
       console.error(error)
-      onExit('Не удалось открыть WebXR. Проверьте Chrome и сервисы Google Play для AR.')
+      const message = error.name === 'NotAllowedError' || error.name === 'SecurityError'
+        ? 'Chrome не разрешил запустить AR. Проверьте разрешения сайта и камеры.'
+        : 'Не удалось открыть WebXR. Проверьте Chrome и сервисы Google Play для AR.'
+      onExit(message)
     }
   }
 

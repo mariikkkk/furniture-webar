@@ -24,17 +24,25 @@ let engine
 let ar
 let useWebXr = false
 
-if (navigator.xr) {
-  arToggle.disabled = true
-  navigator.xr.isSessionSupported('immersive-ar')
-    .then(supported => { useWebXr = supported })
-    .catch(() => {})
-    .finally(() => { arToggle.disabled = false })
-}
-
 function showMessage(message = '') {
   sceneHelp.textContent = message
   sceneHelp.hidden = !message
+}
+
+async function prepareAr() {
+  arToggle.disabled = true
+  arToggle.textContent = 'Загрузка AR…'
+  try {
+    useWebXr = await navigator.xr?.isSessionSupported('immersive-ar').catch(() => false) ?? false
+    if (!useWebXr) engine = await loadArEngine()
+    arToggle.textContent = 'Открыть в AR'
+    showMessage()
+  } catch (error) {
+    arToggle.textContent = 'Повторить загрузку AR'
+    showMessage(error.message)
+  } finally {
+    arToggle.disabled = false
+  }
 }
 
 function updateInstruction() {
@@ -93,29 +101,19 @@ function closeAr(message) {
   }
 }
 
-async function toggleAr() {
+function toggleAr() {
   if (ar) {
     closeAr()
     return
   }
 
-  if (!window.isSecureContext || !navigator.mediaDevices) {
+  if (!window.isSecureContext || (!useWebXr && !navigator.mediaDevices)) {
     showMessage('Для AR откройте страницу по HTTPS на телефоне с камерой.')
     return
   }
 
   if (!useWebXr && !engine) {
-    arToggle.disabled = true
-    showMessage('Загружаем AR…')
-    try {
-      engine = await loadArEngine()
-      arToggle.textContent = 'Включить камеру'
-      showMessage('Нажмите «Включить камеру» и разрешите доступ.')
-    } catch (error) {
-      showMessage(error.message)
-    } finally {
-      arToggle.disabled = false
-    }
+    prepareAr()
     return
   }
 
@@ -124,7 +122,7 @@ async function toggleAr() {
   arCanvas.hidden = useWebXr
   placeButton.hidden = false
   instructions.hidden = true
-  showMessage('Разрешите доступ к камере')
+  showMessage('Запускаем AR…')
   arToggle.textContent = 'Вернуться в 3D'
 
   function showPlacement(ready) {
@@ -154,3 +152,4 @@ back.addEventListener('click', () => goToStep(step, step - 1))
 next.addEventListener('click', () => goToStep(step, step + 1))
 replay.addEventListener('click', () => goToStep(step - 1, step))
 updateInstruction()
+if (window.isSecureContext && (navigator.xr || navigator.mediaDevices)) prepareAr()
