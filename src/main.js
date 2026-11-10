@@ -14,9 +14,11 @@ const placeButton = element('place')
 const sceneHelp = element('scene-help')
 const instructions = element('instructions')
 const debugAr = new URLSearchParams(window.location.search).get('debug') === 'ar'
+const arDebug = element('ar-debug')
 const back = element('back')
 const next = element('next')
 const replay = element('replay')
+showDebug('Диагностика AR включена.')
 const preview = createPreview(previewCanvas, assembly.root, element('panel'))
 
 let step = 0
@@ -30,15 +32,24 @@ function showMessage(message = '') {
   sceneHelp.hidden = !message
 }
 
+function showDebug(message) {
+  if (!debugAr || arDebug.textContent === message) return
+  arDebug.textContent = message
+  arDebug.hidden = false
+}
+
 async function prepareAr() {
   arToggle.disabled = true
   arToggle.textContent = 'Загрузка AR…'
+  showDebug('Диагностика AR. Проверяем поддержку WebXR.')
   try {
     useWebXr = await navigator.xr?.isSessionSupported('immersive-ar').catch(() => false) ?? false
     if (!useWebXr) engine = await loadArEngine()
+    showDebug(useWebXr ? 'WebXR доступен. Нажмите «Открыть в AR».' : 'WebXR недоступен. Готов 8th Wall.')
     arToggle.textContent = 'Открыть в AR'
     showMessage()
   } catch (error) {
+    showDebug(error.message)
     arToggle.textContent = 'Повторить загрузку AR'
     showMessage(error.message)
   } finally {
@@ -125,13 +136,14 @@ function toggleAr() {
   placeButton.hidden = false
   instructions.hidden = true
   showMessage('Запускаем AR…')
+  showDebug(useWebXr ? 'WebXR. Запрашиваем AR-сессию.' : '8th Wall. Запрашиваем камеру.')
   arToggle.textContent = 'Вернуться в 3D'
 
   function showPlacement(mode, detail) {
     let message = 'Наведите камеру на пол и слегка подвигайте телефон'
     if (mode === 'surface') message = 'Поверхность найдена'
     if (mode === 'manual') message = 'Ищем поверхность. Можно поставить модель перед собой.'
-    if (debugAr) message += ` | ${useWebXr ? 'WebXR' : '8th Wall'}. ${detail}`
+    if (debugAr) showDebug(`${useWebXr ? 'WebXR' : '8th Wall'}. ${detail}`)
     if (sceneHelp.textContent !== message) showMessage(message)
     const label = mode === 'manual' ? 'Поставить перед собой' : 'Поставить здесь'
     if (placeButton.textContent !== label) placeButton.textContent = label
@@ -140,7 +152,7 @@ function toggleAr() {
 
   try {
     ar = useWebXr
-      ? startWebXr(document.querySelector('.app'), assembly.root, showPlacement, closeAr)
+      ? startWebXr(element('overlay'), assembly.root, showPlacement, closeAr, showDebug)
       : startAr(engine, arCanvas, assembly.root, showPlacement, closeAr)
   } catch (error) {
     console.error(error)

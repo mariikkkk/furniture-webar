@@ -25,6 +25,14 @@ canvas {
   touch-action: none;
 }
 
+#overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: transparent;
+  pointer-events: none;
+}
+
 .top, .panel {
   position: absolute;
   inset-inline: 0;
@@ -48,6 +56,7 @@ canvas {
   bottom: 0;
   max-height: 60%;
   overflow: auto;
+  pointer-events: auto;
   background: white;
   padding-top: 8px;
   padding-bottom: max(8px, env(safe-area-inset-bottom));

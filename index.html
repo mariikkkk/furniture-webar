@@ -9,32 +9,35 @@
   <main class="app" aria-label="Сборка табурета">
     <canvas id="preview" aria-label="Вращаемая модель табурета"></canvas>
     <canvas id="ar-view" aria-label="Вид с камеры" hidden></canvas>
+    <div id="overlay">
 
-    <header class="top">
-      <button id="ar-toggle" type="button">Открыть в AR</button>
-      <a href="https://github.com/8thwall/engine/blob/main/LICENSE">AR: 8th Wall</a>
-    </header>
+      <header class="top">
+        <button id="ar-toggle" type="button">Открыть в AR</button>
+        <a href="https://github.com/8thwall/engine/blob/main/LICENSE">AR: 8th Wall</a>
+      </header>
 
-    <section class="panel" id="panel" aria-label="Инструкция">
-      <p id="scene-help" role="status" hidden></p>
-      <button id="place" type="button" disabled hidden>Поставить здесь</button>
-      <div id="instructions">
-        <div aria-live="polite">
-          <p id="step-number"></p>
-          <h1 id="step-title"></h1>
-          <p id="step-text"></p>
-          <p id="hardware" hidden>
-            <strong id="hardware-code"></strong>
-            <span id="hardware-text"></span>
-          </p>
+      <section class="panel" id="panel" aria-label="Инструкция">
+        <p id="ar-debug" hidden></p>
+        <p id="scene-help" role="status" hidden></p>
+        <button id="place" type="button" disabled hidden>Поставить здесь</button>
+        <div id="instructions">
+          <div aria-live="polite">
+            <p id="step-number"></p>
+            <h1 id="step-title"></h1>
+            <p id="step-text"></p>
+            <p id="hardware" hidden>
+              <strong id="hardware-code"></strong>
+              <span id="hardware-text"></span>
+            </p>
+          </div>
+          <div class="controls">
+            <button id="back" type="button">Назад</button>
+            <button id="replay" type="button">Повторить</button>
+            <button id="next" type="button">Далее</button>
+          </div>
         </div>
-        <div class="controls">
-          <button id="back" type="button">Назад</button>
-          <button id="replay" type="button">Повторить</button>
-          <button id="next" type="button">Далее</button>
-        </div>
-      </div>
-    </section>
+      </section>
+    </div>
   </main>
   <script type="module" src="/src/main.js"></script>
 </body>

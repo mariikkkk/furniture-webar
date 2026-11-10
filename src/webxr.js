@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { lightScene } from './assembly.js'
 
-export function startWebXr(overlay, root, onPlacement, onExit) {
+export function startWebXr(overlay, root, onPlacement, onExit, onStatus) {
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
   renderer.xr.enabled = true
   renderer.xr.setReferenceSpaceType('local')
@@ -93,6 +93,7 @@ export function startWebXr(overlay, root, onPlacement, onExit) {
         return
       }
 
+      onStatus(`WebXR запущен. Оверлей: ${session.domOverlayState?.type ?? 'нет'}.`)
       const viewer = await session.requestReferenceSpace('viewer')
       hitSource = await session.requestHitTestSource({ space: viewer })
       if (!stopped && typeof XRRay === 'function') {
