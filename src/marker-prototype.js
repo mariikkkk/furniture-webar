@@ -25,7 +25,7 @@ start.addEventListener('click', async () => {
     const assembly = createAssembly()
     assembly.showStep(3, 3)
     assembly.root.rotation.x = Math.PI / 2
-    assembly.root.scale.setScalar(1.2)
+    assembly.root.scale.setScalar(0.48)
 
     const anchor = tracker.addAnchor(0)
     anchor.group.add(assembly.root)
