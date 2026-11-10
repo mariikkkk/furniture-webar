@@ -1,6 +1,7 @@
 import { createAssembly, lightScene } from './assembly.js'
 
 const container = document.getElementById('camera')
+const viewport = document.getElementById('camera-viewport')
 const start = document.getElementById('start')
 const status = document.getElementById('status')
 const scanMessage = 'Наведите камеру на метку и держите её в кадре.'
@@ -39,6 +40,21 @@ start.addEventListener('click', async () => {
     }
     if (!anchor.visible) status.textContent = scanMessage
     start.hidden = true
+
+    function fitCamera() {
+      const { videoWidth, videoHeight } = tracker.video
+      if (!videoWidth || !videoHeight || !viewport.clientWidth || !viewport.clientHeight) return
+
+      const scale = Math.min(viewport.clientWidth / videoWidth, viewport.clientHeight / videoHeight)
+      container.style.width = `${Math.round(videoWidth * scale)}px`
+      container.style.height = `${Math.round(videoHeight * scale)}px`
+      tracker.resize()
+    }
+
+    fitCamera()
+    const observer = new ResizeObserver(fitCamera)
+    observer.observe(viewport)
+    tracker.video.addEventListener('resize', fitCamera)
     renderer.setAnimationLoop(() => renderer.render(scene, camera))
   } catch (error) {
     console.error(error)

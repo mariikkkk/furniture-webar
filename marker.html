@@ -13,9 +13,10 @@
     }
   </script>
   <style>
-    body { margin: 0; font: 16px/1.4 system-ui, sans-serif; color: #111; }
-    #camera { position: fixed; inset: 0; overflow: hidden; isolation: isolate; background: #ddd; }
-    .panel { position: fixed; inset: auto 0 0; background: white; padding: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+    body { margin: 0; height: 100dvh; display: grid; grid-template-rows: minmax(0, 1fr) auto; font: 16px/1.4 system-ui, sans-serif; color: #111; }
+    #camera-viewport { display: grid; place-items: center; overflow: hidden; background: #111; }
+    #camera { position: relative; width: 100%; height: 100%; overflow: hidden; isolation: isolate; }
+    .panel { background: white; padding: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
     p { margin: 0 0 8px; }
     button, a { font: inherit; }
     button { min-height: 44px; }
@@ -23,7 +24,9 @@
   </style>
 </head>
 <body>
-  <div id="camera" aria-label="Камера"></div>
+  <div id="camera-viewport">
+    <div id="camera" aria-label="Камера"></div>
+  </div>
   <section class="panel" aria-label="Проверка метки">
     <p id="status" role="status">Проверка привязки табурета к картинке. Положите метку горизонтально.</p>
     <button id="start" type="button">Открыть камеру</button>
