@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Проверка AR по метке</title>
+  <title>AR по метке ArUco</title>
   <style>
     body { margin: 0; height: 100dvh; display: grid; grid-template-rows: minmax(0, 1fr) auto; font: 16px/1.4 system-ui, sans-serif; color: #111; }
     #camera-viewport { display: grid; place-items: center; overflow: hidden; background: #111; }
@@ -14,6 +14,7 @@
     button, a { font: inherit; }
     button { min-height: 44px; }
     a { display: inline-block; margin: 6px 10px 6px 0; }
+    select { max-width: 100%; }
   </style>
 </head>
 <body>
@@ -24,7 +25,12 @@
     <p id="status" role="status">Положите квадратную метку на поверхность и наведите на неё камеру.</p>
     <button id="start" type="button">Открыть камеру</button>
     <a href="./furniture-marker.svg" target="_blank" rel="noopener">Открыть метку</a>
-    <a href="./">К инструкции</a>
+    <a href="./">WebXR без метки</a>
+    <details id="camera-details" hidden>
+      <summary>Камера и масштаб</summary>
+      <label id="camera-choice" hidden>Камера <select id="camera-device"></select></label>
+      <p id="camera-info"></p>
+    </details>
   </section>
   <script type="module" src="/src/marker-prototype.js"></script>
 </body>

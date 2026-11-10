@@ -7,10 +7,30 @@ const container = document.getElementById('camera')
 const viewport = document.getElementById('camera-viewport')
 const start = document.getElementById('start')
 const status = document.getElementById('status')
+const cameraDetails = document.getElementById('camera-details')
+const cameraChoice = document.getElementById('camera-choice')
+const cameraDevice = document.getElementById('camera-device')
+const cameraInfo = document.getElementById('camera-info')
 const markerId = 42
 const markerWidth = 1
 const searchMessage = 'Наведите камеру на квадратную метку целиком.'
 const foundMessage = 'Метка найдена. Держите все четыре угла в кадре.'
+
+function openCamera(deviceId) {
+  const video = deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } }
+  return navigator.mediaDevices.getUserMedia({ audio: false, video: { ...video, resizeMode: { ideal: 'none' } } })
+}
+
+async function describeCamera(track, video) {
+  const range = track.getCapabilities?.().zoom
+  if (range && track.getSettings().zoom > 1) {
+    const zoom = Math.max(1, range.min)
+    await track.applyConstraints({ ...track.getConstraints(), advanced: [{ zoom }] }).catch(() => {})
+  }
+  const { zoom } = track.getSettings()
+  const scale = typeof zoom === 'number' ? `Зум ${zoom}×` : 'Chrome не сообщает зум'
+  cameraInfo.textContent = `${track.label || 'Видеокамера'} · ${video.videoWidth}×${video.videoHeight} · ${scale}`
+}
 
 start.addEventListener('click', async () => {
   start.disabled = true
@@ -19,13 +39,16 @@ start.addEventListener('click', async () => {
   let renderer
 
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' } } })
+    stream = await openCamera()
     const video = document.createElement('video')
     video.muted = true
     video.playsInline = true
     video.srcObject = stream
     container.append(video)
     await video.play()
+    const track = stream.getVideoTracks()[0]
+    await describeCamera(track, video)
+    cameraDetails.hidden = false
 
     renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
@@ -117,6 +140,41 @@ start.addEventListener('click', async () => {
     observer.observe(viewport)
     video.addEventListener('resize', fitCamera)
     renderer.setAnimationLoop(draw)
+
+    const devices = await navigator.mediaDevices.enumerateDevices().catch(() => [])
+    const cameras = devices.filter(device => device.kind === 'videoinput' && device.deviceId)
+    const currentDevice = track.getSettings().deviceId
+    if (cameras.length > 1) {
+      cameraDevice.replaceChildren(new Option('Автоматически', ''))
+      cameras.forEach(({ deviceId, label }, index) => cameraDevice.add(new Option(label || `Камера ${index + 1}`, deviceId)))
+      cameraDevice.value = cameras.some(device => device.deviceId === currentDevice) ? currentDevice : ''
+      cameraChoice.hidden = false
+    }
+
+    cameraDevice.addEventListener('change', async () => {
+      cameraDevice.disabled = true
+      stream.getTracks().forEach(track => track.stop())
+      video.srcObject = null
+      lastSeen = -Infinity
+      anchor.visible = false
+      renderer.render(scene, camera)
+      status.textContent = 'Переключаем камеру…'
+      try {
+        stream = await openCamera(cameraDevice.value)
+        video.srcObject = stream
+        await video.play()
+        await describeCamera(stream.getVideoTracks()[0], video)
+        fitCamera()
+        if (!anchor.visible) status.textContent = searchMessage
+      } catch {
+        stream.getTracks().forEach(track => track.stop())
+        video.srcObject = null
+        cameraInfo.textContent = ''
+        status.textContent = 'Не удалось открыть выбранную камеру. Выберите другую.'
+      } finally {
+        cameraDevice.disabled = false
+      }
+    })
   } catch (error) {
     console.error(error)
     stream?.getTracks().forEach(track => track.stop())
