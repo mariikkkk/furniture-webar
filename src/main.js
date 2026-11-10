@@ -120,15 +120,20 @@ function toggleAr() {
   preview.pause()
   previewCanvas.hidden = true
   arCanvas.hidden = useWebXr
+  placeButton.textContent = 'Поставить здесь'
   placeButton.hidden = false
   instructions.hidden = true
   showMessage('Запускаем AR…')
   arToggle.textContent = 'Вернуться в 3D'
 
-  function showPlacement(ready) {
-    const message = ready ? 'Поставьте комплект на пол' : 'Наведите камеру на пол и слегка подвигайте телефон'
+  function showPlacement(mode) {
+    let message = 'Наведите камеру на пол и слегка подвигайте телефон'
+    if (mode === 'surface') message = 'Поверхность найдена'
+    if (mode === 'manual') message = 'Ищем поверхность. Можно поставить модель перед собой.'
     if (sceneHelp.textContent !== message) showMessage(message)
-    placeButton.disabled = !ready
+    const label = mode === 'manual' ? 'Поставить перед собой' : 'Поставить здесь'
+    if (placeButton.textContent !== label) placeButton.textContent = label
+    placeButton.disabled = mode === 'waiting'
   }
 
   try {

@@ -36,6 +36,7 @@ export function startAr(engine, canvas, root, onPlacement, onError) {
   const center = new THREE.Vector2()
   const floor = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
   const point = new THREE.Vector3()
+  const pointInFront = new THREE.Vector3()
   const reticle = new THREE.Mesh(
     new THREE.RingGeometry(0.095, 0.115, 32),
     new THREE.MeshBasicMaterial({ color: 0xffc059, side: THREE.DoubleSide })
@@ -46,6 +47,7 @@ export function startAr(engine, canvas, root, onPlacement, onError) {
   let camera
   let placed = false
   let stopped = false
+  let canPlaceInFront = false
 
   function resizeCanvas() {
     const ratio = Math.min(window.devicePixelRatio, 2)
@@ -102,12 +104,18 @@ export function startAr(engine, canvas, root, onPlacement, onError) {
 
         camera.updateMatrixWorld()
         ray.setFromCamera(center, camera)
-        const tracksFloor = processCpuResult?.reality?.trackingStatus === 'NORMAL'
+        const tracking = processCpuResult?.reality
+        const tracksFloor = tracking?.trackingStatus === 'NORMAL'
+        canPlaceInFront = Boolean(tracking?.position && tracking.trackingReason !== 'INITIALIZING')
+        if (canPlaceInFront) {
+          pointInFront.copy(ray.ray.direction).multiplyScalar(1.6).add(camera.position)
+          pointInFront.y -= 0.15
+        }
         const hit = tracksFloor && ray.ray.intersectPlane(floor, point)
         const ready = Boolean(hit && point.distanceTo(camera.position) < 4)
         reticle.visible = ready
         if (ready) reticle.position.copy(point).setY(0.005)
-        onPlacement(ready)
+        onPlacement(ready ? 'surface' : canPlaceInFront ? 'manual' : 'waiting')
       },
       onCameraStatusChange({ status }) {
         if (status === 'failed') fail('Камера недоступна. Проверьте разрешение в браузере.')
@@ -129,10 +137,10 @@ export function startAr(engine, canvas, root, onPlacement, onError) {
   }
 
   function place() {
-    if (!reticle.visible) return false
+    if (!reticle.visible && !canPlaceInFront) return false
     placed = true
+    root.position.copy(reticle.visible ? reticle.position : pointInFront)
     reticle.visible = false
-    root.position.copy(reticle.position)
     root.rotation.y = Math.atan2(camera.position.x - root.position.x, camera.position.z - root.position.z)
     root.visible = true
     return true

@@ -8,6 +8,8 @@ export function startWebXr(overlay, root, onPlacement, onExit) {
 
   const scene = new THREE.Scene()
   const camera = new THREE.PerspectiveCamera()
+  const viewPosition = new THREE.Vector3()
+  const pointInFront = new THREE.Vector3()
   const reticle = new THREE.Mesh(
     new THREE.RingGeometry(0.095, 0.115, 32).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ color: 0xffc059, side: THREE.DoubleSide })
@@ -21,6 +23,7 @@ export function startWebXr(overlay, root, onPlacement, onExit) {
   let hitSource
   let stopped = false
   let placed = false
+  let canPlaceInFront = false
 
   function dispose() {
     renderer.setAnimationLoop(null)
@@ -40,6 +43,14 @@ export function startWebXr(overlay, root, onPlacement, onExit) {
 
     if (!placed) {
       const referenceSpace = renderer.xr.getReferenceSpace()
+      const viewer = frame.getViewerPose(referenceSpace)
+      canPlaceInFront = Boolean(viewer)
+      if (viewer) {
+        viewPosition.copy(viewer.transform.position)
+        pointInFront.set(0, 0, -1.6).applyQuaternion(viewer.transform.orientation)
+        pointInFront.add(viewPosition).y -= 0.15
+      }
+
       const hit = frame.getHitTestResults(hitSource)[0]
       const pose = hit?.getPose(referenceSpace)
       reticle.visible = Boolean(pose)
@@ -47,7 +58,7 @@ export function startWebXr(overlay, root, onPlacement, onExit) {
         reticle.position.copy(pose.transform.position)
         reticle.quaternion.copy(pose.transform.orientation)
       }
-      onPlacement(reticle.visible)
+      onPlacement(reticle.visible ? 'surface' : canPlaceInFront ? 'manual' : 'waiting')
     }
 
     renderer.render(scene, camera)
@@ -93,10 +104,9 @@ export function startWebXr(overlay, root, onPlacement, onExit) {
   start()
 
   function place() {
-    if (!reticle.visible) return false
-    root.position.copy(reticle.position)
-    const view = renderer.xr.getCamera().position
-    root.rotation.y = Math.atan2(view.x - root.position.x, view.z - root.position.z)
+    if (!reticle.visible && !canPlaceInFront) return false
+    root.position.copy(reticle.visible ? reticle.position : pointInFront)
+    root.rotation.y = Math.atan2(viewPosition.x - root.position.x, viewPosition.z - root.position.z)
     root.visible = true
     placed = true
     reticle.visible = false
