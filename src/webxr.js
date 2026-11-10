@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { lightScene } from './assembly.js'
 
-export function startWebXr(overlay, root, onPlacement, onExit, onStatus) {
+export function startWebXr(overlay, root, onPlacement, onExit, onStatus, onTracking) {
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
   renderer.xr.enabled = true
   renderer.xr.setReferenceSpaceType('local')
@@ -11,6 +11,8 @@ export function startWebXr(overlay, root, onPlacement, onExit, onStatus) {
   const viewPosition = new THREE.Vector3()
   const pointInFront = new THREE.Vector3()
   const surfaceNormal = new THREE.Vector3()
+  const anchorRotation = new THREE.Quaternion()
+  const anchorAngles = new THREE.Euler(0, 0, 0, 'YXZ')
   const reticle = new THREE.Mesh(
     new THREE.RingGeometry(0.095, 0.115, 32).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ color: 0xffc059, side: THREE.DoubleSide })
@@ -26,8 +28,11 @@ export function startWebXr(overlay, root, onPlacement, onExit, onStatus) {
   let stopped = false
   let placed = false
   let canPlaceInFront = false
+  let anchor
+  let needsAnchor = false
 
   function dispose() {
+    anchor?.delete()
     renderer.setAnimationLoop(null)
     renderer.dispose()
     reticle.geometry.dispose()
@@ -43,11 +48,34 @@ export function startWebXr(overlay, root, onPlacement, onExit, onStatus) {
   function draw(time, frame) {
     if (!frame) return
 
-    if (!placed) {
-      const referenceSpace = renderer.xr.getReferenceSpace()
-      const viewer = frame.getViewerPose(referenceSpace)
-      canPlaceInFront = Boolean(viewer)
-      if (viewer) {
+    const referenceSpace = renderer.xr.getReferenceSpace()
+    const viewer = frame.getViewerPose(referenceSpace)
+    const tracked = Boolean(viewer && !viewer.emulatedPosition)
+
+    if (placed) {
+      if (needsAnchor && tracked) {
+        needsAnchor = false
+        if (typeof frame.createAnchor === 'function') {
+          anchorRotation.setFromEuler(anchorAngles.set(0, root.rotation.y, 0))
+          const transform = new XRRigidTransform(root.position, anchorRotation)
+          frame.createAnchor(transform, referenceSpace).then(created => {
+            if (stopped) created.delete()
+            else anchor = created
+          }).catch(() => {})
+        }
+      }
+
+      const pose = anchor && tracked ? frame.getPose(anchor.anchorSpace, referenceSpace) : null
+      root.visible = tracked && (!anchor || Boolean(pose))
+      if (pose) {
+        root.position.copy(pose.transform.position)
+        anchorRotation.copy(pose.transform.orientation)
+        root.rotation.y = anchorAngles.setFromQuaternion(anchorRotation).y
+      }
+      onTracking(root.visible)
+    } else {
+      canPlaceInFront = tracked
+      if (tracked) {
         viewPosition.copy(viewer.transform.position)
         pointInFront.set(0, 0, -1.6).applyQuaternion(viewer.transform.orientation)
         pointInFront.add(viewPosition).y -= 0.15
@@ -56,7 +84,7 @@ export function startWebXr(overlay, root, onPlacement, onExit, onStatus) {
       const hits = frame.getHitTestResults(hitSource)
       const lowerHits = lowerHitSource ? frame.getHitTestResults(lowerHitSource) : []
       const poses = [...hits, ...lowerHits].map(hit => hit.getPose(referenceSpace))
-      const pose = poses.find(candidate => {
+      const pose = tracked && poses.find(candidate => {
         if (!candidate) return false
         return surfaceNormal.set(0, 1, 0).applyQuaternion(candidate.transform.orientation).y > 0.85
       })
@@ -65,7 +93,7 @@ export function startWebXr(overlay, root, onPlacement, onExit, onStatus) {
         reticle.position.copy(pose.transform.position)
         reticle.quaternion.copy(pose.transform.orientation)
       }
-      const detail = `Положение телефона: ${viewer ? 'есть' : 'нет'}. Пересечений: ${hits.length + lowerHits.length}.`
+      const detail = `Точный трекинг: ${tracked ? 'да' : 'нет'}. Пересечений: ${hits.length + lowerHits.length}.`
       onPlacement(reticle.visible ? 'surface' : canPlaceInFront ? 'manual' : 'waiting', detail)
     }
 
@@ -76,6 +104,7 @@ export function startWebXr(overlay, root, onPlacement, onExit, onStatus) {
     try {
       session = await navigator.xr.requestSession('immersive-ar', {
         requiredFeatures: ['hit-test', 'dom-overlay'],
+        optionalFeatures: ['anchors'],
         domOverlay: { root: overlay }
       })
       session.addEventListener('end', () => {
@@ -122,6 +151,7 @@ export function startWebXr(overlay, root, onPlacement, onExit, onStatus) {
     root.rotation.y = Math.atan2(viewPosition.x - root.position.x, viewPosition.z - root.position.z)
     root.visible = true
     placed = true
+    needsAnchor = true
     reticle.visible = false
     return true
   }

@@ -12,6 +12,7 @@ const arCanvas = element('ar-view')
 const arToggle = element('ar-toggle')
 const placeButton = element('place')
 const sceneHelp = element('scene-help')
+const arMode = element('ar-mode')
 const instructions = element('instructions')
 const debugAr = new URLSearchParams(window.location.search).get('debug') === 'ar'
 const arDebug = element('ar-debug')
@@ -44,6 +45,8 @@ async function prepareAr() {
   showDebug('Диагностика AR. Проверяем поддержку WebXR.')
   try {
     useWebXr = await navigator.xr?.isSessionSupported('immersive-ar').catch(() => false) ?? false
+    arMode.textContent = useWebXr ? 'AR: WebXR' : 'AR: 8th Wall'
+    arMode.hidden = false
     if (!useWebXr) engine = await loadArEngine()
     showDebug(useWebXr ? 'WebXR доступен. Нажмите «Открыть в AR».' : 'WebXR недоступен. Готов 8th Wall.')
     arToggle.textContent = 'Открыть в AR'
@@ -140,6 +143,8 @@ function toggleAr() {
   arToggle.textContent = 'Вернуться в 3D'
 
   function showPlacement(mode, detail) {
+    placeButton.hidden = false
+    instructions.hidden = true
     let message = 'Наведите камеру на пол и слегка подвигайте телефон'
     if (mode === 'surface') message = 'Поверхность найдена'
     if (mode === 'manual') message = 'Ищем поверхность. Можно поставить модель перед собой.'
@@ -150,10 +155,15 @@ function toggleAr() {
     placeButton.disabled = mode === 'waiting'
   }
 
+  function showTracking(tracked) {
+    const message = tracked ? '' : 'Трекинг потерян. Наведите камеру на место установки.'
+    if (sceneHelp.textContent !== message) showMessage(message)
+  }
+
   try {
     ar = useWebXr
-      ? startWebXr(element('overlay'), assembly.root, showPlacement, closeAr, showDebug)
-      : startAr(engine, arCanvas, assembly.root, showPlacement, closeAr)
+      ? startWebXr(element('overlay'), assembly.root, showPlacement, closeAr, showDebug, showTracking)
+      : startAr(engine, arCanvas, assembly.root, showPlacement, closeAr, showTracking)
   } catch (error) {
     console.error(error)
     closeAr('Не удалось запустить AR. Можно продолжить в 3D.')
