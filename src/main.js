@@ -1,6 +1,5 @@
 import { createAssembly } from './assembly.js'
 import { createPreview } from './preview.js'
-import { loadArEngine, startAr } from './ar.js'
 import { startWebXr } from './webxr.js'
 import { steps } from './steps.js'
 import './style.css'
@@ -8,7 +7,6 @@ import './style.css'
 const assembly = createAssembly()
 const element = id => document.getElementById(id)
 const previewCanvas = element('preview')
-const arCanvas = element('ar-view')
 const arToggle = element('ar-toggle')
 const placeButton = element('place')
 const sceneHelp = element('scene-help')
@@ -24,9 +22,7 @@ const preview = createPreview(previewCanvas, assembly.root, element('panel'))
 
 let step = 0
 let animating = false
-let engine
 let ar
-let useWebXr = false
 
 function showMessage(message = '') {
   sceneHelp.textContent = message
@@ -40,24 +36,13 @@ function showDebug(message) {
 }
 
 async function prepareAr() {
-  arToggle.disabled = true
-  arToggle.textContent = 'Загрузка AR…'
   showDebug('Диагностика AR. Проверяем поддержку WebXR.')
-  try {
-    useWebXr = await navigator.xr?.isSessionSupported('immersive-ar').catch(() => false) ?? false
-    arMode.textContent = useWebXr ? 'AR: WebXR' : 'AR: 8th Wall'
-    arMode.hidden = false
-    if (!useWebXr) engine = await loadArEngine()
-    showDebug(useWebXr ? 'WebXR доступен. Нажмите «Открыть в AR».' : 'WebXR недоступен. Готов 8th Wall.')
-    arToggle.textContent = 'Открыть в AR'
-    showMessage()
-  } catch (error) {
-    showDebug(error.message)
-    arToggle.textContent = 'Повторить загрузку AR'
-    showMessage(error.message)
-  } finally {
-    arToggle.disabled = false
-  }
+  const supported = await navigator.xr?.isSessionSupported('immersive-ar').catch(() => false)
+  arToggle.disabled = !supported
+  arToggle.textContent = supported ? 'Открыть в AR' : 'AR недоступен'
+  arMode.textContent = supported ? 'AR: WebXR' : 'WebXR недоступен. Можно продолжить в 3D.'
+  arMode.hidden = false
+  showDebug(supported ? 'WebXR доступен. Нажмите «Открыть в AR».' : 'Браузер не предоставил режим immersive-ar.')
 }
 
 function updateInstruction() {
@@ -105,7 +90,6 @@ function closeAr(message) {
     ar?.stop()
   } finally {
     ar = undefined
-    arCanvas.hidden = true
     previewCanvas.hidden = false
     preview.resume()
     placeButton.hidden = true
@@ -122,24 +106,13 @@ function toggleAr() {
     return
   }
 
-  if (!window.isSecureContext || (!useWebXr && !navigator.mediaDevices)) {
-    showMessage('Для AR откройте страницу по HTTPS на телефоне с камерой.')
-    return
-  }
-
-  if (!useWebXr && !engine) {
-    prepareAr()
-    return
-  }
-
   preview.pause()
   previewCanvas.hidden = true
-  arCanvas.hidden = useWebXr
   placeButton.textContent = 'Поставить здесь'
   placeButton.hidden = false
   instructions.hidden = true
   showMessage('Запускаем AR…')
-  showDebug(useWebXr ? 'WebXR. Запрашиваем AR-сессию.' : '8th Wall. Запрашиваем камеру.')
+  showDebug('WebXR. Запрашиваем AR-сессию.')
   arToggle.textContent = 'Вернуться в 3D'
 
   function showPlacement(mode, detail) {
@@ -148,7 +121,7 @@ function toggleAr() {
     let message = 'Наведите камеру на пол и слегка подвигайте телефон'
     if (mode === 'surface') message = 'Поверхность найдена'
     if (mode === 'manual') message = 'Ищем поверхность. Можно поставить модель перед собой.'
-    if (debugAr) showDebug(`${useWebXr ? 'WebXR' : '8th Wall'}. ${detail}`)
+    showDebug(`WebXR. ${detail}`)
     if (sceneHelp.textContent !== message) showMessage(message)
     const label = mode === 'manual' ? 'Поставить перед собой' : 'Поставить здесь'
     if (placeButton.textContent !== label) placeButton.textContent = label
@@ -161,9 +134,7 @@ function toggleAr() {
   }
 
   try {
-    ar = useWebXr
-      ? startWebXr(element('overlay'), assembly.root, showPlacement, closeAr, showDebug, showTracking)
-      : startAr(engine, arCanvas, assembly.root, showPlacement, closeAr, showTracking)
+    ar = startWebXr(element('overlay'), assembly.root, showPlacement, closeAr, showDebug, showTracking)
   } catch (error) {
     console.error(error)
     closeAr('Не удалось запустить AR. Можно продолжить в 3D.')
@@ -181,4 +152,4 @@ back.addEventListener('click', () => goToStep(step, step - 1))
 next.addEventListener('click', () => goToStep(step, step + 1))
 replay.addEventListener('click', () => goToStep(step - 1, step))
 updateInstruction()
-if (window.isSecureContext && (navigator.xr || navigator.mediaDevices)) prepareAr()
+prepareAr()

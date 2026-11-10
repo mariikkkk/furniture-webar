@@ -44,13 +44,11 @@ canvas {
   top: 0;
   padding-top: max(8px, env(safe-area-inset-top));
   display: flex;
-  justify-content: space-between;
   align-items: start;
   pointer-events: none;
 }
 
 .top > * { pointer-events: auto; }
-.top a { color: inherit; background: white; padding: 4px; font-size: 12px; }
 
 .panel {
   bottom: 0;
