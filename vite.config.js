@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  build: { rollupOptions: { input: { main: 'index.html', marker: 'marker.html' } } },
   optimizeDeps: { exclude: ['three'] },
   plugins: [{
     name: 'webxr-camera-layer',

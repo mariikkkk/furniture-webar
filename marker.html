@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Проверка AR по метке</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./marker-three.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.183.2/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    body { margin: 0; font: 16px/1.4 system-ui, sans-serif; color: #111; }
+    #camera { position: fixed; inset: 0; overflow: hidden; isolation: isolate; background: #ddd; }
+    .panel { position: fixed; inset: auto 0 0; background: white; padding: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+    p { margin: 0 0 8px; }
+    button, a { font: inherit; }
+    button { min-height: 44px; }
+    a { display: inline-block; margin: 6px 10px 6px 0; }
+  </style>
+</head>
+<body>
+  <div id="camera" aria-label="Камера"></div>
+  <section class="panel" aria-label="Проверка метки">
+    <p id="status" role="status">Проверка привязки табурета к картинке. Положите метку горизонтально.</p>
+    <button id="start" type="button">Открыть камеру</button>
+    <a href="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.png" target="_blank" rel="noopener">Открыть метку</a>
+    <a href="./">К инструкции</a>
+  </section>
+  <script type="module" src="/src/marker-prototype.js"></script>
+</body>
+</html>
