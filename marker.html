@@ -5,19 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Сборка табурета по метке</title>
   <style>
-    body { margin: 0; height: 100dvh; display: grid; grid-template-rows: minmax(0, 1fr) auto; font: 16px/1.4 system-ui, sans-serif; color: #111; }
-    #camera-viewport { display: grid; place-items: center; overflow: hidden; background: #111; }
+    body { margin: 0; font: 16px/1.4 system-ui, sans-serif; color: #111; }
+    #camera-viewport { position: fixed; inset: 0; display: grid; place-items: center; overflow: hidden; background: #111; }
     #camera { position: relative; width: 100%; height: 100%; overflow: hidden; isolation: isolate; }
     #camera video, #camera canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-    .panel { max-height: 55dvh; overflow: auto; box-sizing: border-box; background: white; padding: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+    .top { position: fixed; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); display: flex; align-items: start; gap: 8px; }
+    #status { background: white; padding: 6px 8px; font-size: 14px; }
+    body[data-tracking="true"] #status { display: none; }
+    #camera-details { margin-left: auto; padding: 0 8px; background: white; max-width: 100%; }
+    #camera-details summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+    .panel { position: fixed; bottom: 0; inset-inline: 0; max-height: 45dvh; overflow: auto; box-sizing: border-box; background: white; padding: 8px max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
     [hidden] { display: none !important; }
-    h1 { margin: 0 0 4px; font-size: 18px; }
     #step-number { font-size: 13px; }
+    #step-details summary { cursor: pointer; padding-bottom: 6px; }
+    #step-title { font-size: 16px; }
     .controls { display: flex; flex-wrap: wrap; gap: 6px; }
     p { margin: 0 0 8px; }
-    button, a { font: inherit; }
-    button { min-height: 44px; }
-    a { display: inline-block; margin: 6px 10px 6px 0; }
+    button, select { font: inherit; min-height: 44px; }
     select { max-width: 100%; }
   </style>
 </head>
@@ -25,14 +29,22 @@
   <div id="camera-viewport">
     <div id="camera" aria-label="Камера"></div>
   </div>
-  <section class="panel" aria-label="Инструкция по сборке">
+  <header class="top">
     <p id="status" role="status">Положите квадратную метку на поверхность и наведите на неё камеру.</p>
     <button id="start" type="button">Открыть камеру</button>
+    <details id="camera-details" hidden>
+      <summary>Камера</summary>
+      <label id="camera-choice" hidden>Выбрать <select id="camera-device"></select></label>
+      <p id="camera-info"></p>
+    </details>
+  </header>
+  <section class="panel" aria-label="Инструкция по сборке">
     <div id="instructions">
       <div aria-live="polite">
-        <p id="step-number"></p>
-        <h1 id="step-title"></h1>
-        <p id="step-text"></p>
+        <details id="step-details">
+          <summary><span id="step-number"></span> · <strong id="step-title"></strong></summary>
+          <p id="step-text"></p>
+        </details>
         <p id="hardware" hidden>
           <strong id="hardware-code"></strong>
           <span id="hardware-text"></span>
@@ -44,13 +56,6 @@
         <button id="next" type="button">Далее</button>
       </div>
     </div>
-    <a href="./furniture-marker.svg" target="_blank" rel="noopener">Открыть метку</a>
-    <a href="./">WebXR без метки</a>
-    <details id="camera-details" hidden>
-      <summary>Камера и масштаб</summary>
-      <label id="camera-choice" hidden>Камера <select id="camera-device"></select></label>
-      <p id="camera-info"></p>
-    </details>
   </section>
   <script type="module" src="/src/marker-prototype.js"></script>
 </body>

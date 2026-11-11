@@ -21,7 +21,15 @@ setupInstructions(assembly)
 
 function openCamera(deviceId) {
   const video = deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } }
-  return navigator.mediaDevices.getUserMedia({ audio: false, video: { ...video, resizeMode: { ideal: 'none' } } })
+  const aspectRatio = viewport.clientWidth / viewport.clientHeight
+  const height = Math.round(1280 / Math.max(1, aspectRatio))
+  return navigator.mediaDevices.getUserMedia({ audio: false, video: {
+    ...video,
+    width: { ideal: Math.round(height * aspectRatio) },
+    height: { ideal: height },
+    aspectRatio: { ideal: aspectRatio },
+    resizeMode: { ideal: 'none' }
+  } })
 }
 
 async function describeCamera(track, video) {
@@ -129,6 +137,7 @@ start.addEventListener('click', async () => {
       const visible = time - lastSeen < 180
       if (visible !== anchor.visible) {
         anchor.visible = visible
+        document.body.dataset.tracking = String(visible)
         status.textContent = visible ? foundMessage : 'Метка потеряна. Верните её целиком в кадр.'
       }
       renderer.render(scene, camera)
@@ -158,6 +167,7 @@ start.addEventListener('click', async () => {
       video.srcObject = null
       lastSeen = -Infinity
       anchor.visible = false
+      document.body.dataset.tracking = 'false'
       renderer.render(scene, camera)
       status.textContent = 'Переключаем камеру…'
       try {
