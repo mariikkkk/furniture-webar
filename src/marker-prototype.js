@@ -21,15 +21,7 @@ setupInstructions(assembly)
 
 function openCamera(deviceId) {
   const video = deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } }
-  const aspectRatio = viewport.clientWidth / viewport.clientHeight
-  const height = Math.round(1280 / Math.max(1, aspectRatio))
-  return navigator.mediaDevices.getUserMedia({ audio: false, video: {
-    ...video,
-    width: { ideal: Math.round(height * aspectRatio) },
-    height: { ideal: height },
-    aspectRatio: { ideal: aspectRatio },
-    resizeMode: { ideal: 'none' }
-  } })
+  return navigator.mediaDevices.getUserMedia({ audio: false, video: { ...video, resizeMode: { ideal: 'none' } } })
 }
 
 async function describeCamera(track, video) {
@@ -50,7 +42,19 @@ start.addEventListener('click', async () => {
   let renderer
 
   try {
-    stream = await openCamera()
+    let preferredDeviceId = ''
+    try {
+      preferredDeviceId = localStorage.getItem('furniture-marker-camera') || ''
+    } catch {}
+    try {
+      stream = await openCamera(preferredDeviceId)
+    } catch (error) {
+      if (!preferredDeviceId || !['NotFoundError', 'OverconstrainedError'].includes(error.name)) throw error
+      try {
+        localStorage.removeItem('furniture-marker-camera')
+      } catch {}
+      stream = await openCamera()
+    }
     const video = document.createElement('video')
     video.muted = true
     video.playsInline = true
@@ -175,6 +179,9 @@ start.addEventListener('click', async () => {
         video.srcObject = stream
         await video.play()
         await describeCamera(stream.getVideoTracks()[0], video)
+        try {
+          localStorage.setItem('furniture-marker-camera', cameraDevice.value)
+        } catch {}
         fitCamera()
         if (!anchor.visible) status.textContent = searchMessage
       } catch {
