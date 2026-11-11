@@ -84,11 +84,13 @@ start.addEventListener('click', async () => {
     const rotation = new THREE.Matrix4()
     const orientation = new THREE.Quaternion()
     const position = new THREE.Vector3()
+    let trackedCorners = []
     let estimatePose
     if (!markerSize.checkValidity()) markerSize.value = '12'
     let markerWidth = markerSize.valueAsNumber / 100
     let lastScan = -Infinity
     let lastSeen = -Infinity
+    let lastRender = 0
 
     function fitCamera() {
       const { videoWidth, videoHeight } = video
@@ -112,34 +114,52 @@ start.addEventListener('click', async () => {
     }
 
     function draw(time) {
-      if (!estimatePose || video.readyState < 2 || time - lastScan < 50) return
-      lastScan = time
-      context.drawImage(video, 0, 0, frame.width, frame.height)
-      const pixels = context.getImageData(0, 0, frame.width, frame.height)
-      const marker = detector.detect(pixels).find(candidate => candidate.id === markerId)
+      const elapsed = Math.min(time - lastRender, 100)
+      lastRender = time
+      if (estimatePose && video.readyState >= 2 && time - lastScan >= 50) {
+        lastScan = time
+        context.drawImage(video, 0, 0, frame.width, frame.height)
+        const pixels = context.getImageData(0, 0, frame.width, frame.height)
+        const marker = detector.detect(pixels).find(candidate => candidate.id === markerId)
 
-      if (marker) {
-        const corners = marker.corners.map(({ x, y }) => ({ x: x - frame.width / 2, y: frame.height / 2 - y }))
-        const { bestRotation, bestTranslation, bestError } = estimatePose.pose(corners)
-        const [x, y, z] = bestTranslation
-        if (Number.isFinite(bestError) && bestError >= 0 && bestError <= 5 && Number.isFinite(x + y + z) && z > 0) {
-          const [rowX, rowY, rowZ] = bestRotation
-          rotation.set(
-            rowX[0], rowX[1], -rowX[2], 0,
-            rowY[0], rowY[1], -rowY[2], 0,
-            -rowZ[0], -rowZ[1], rowZ[2], 0,
-            0, 0, 0, 1
-          )
-          orientation.setFromRotationMatrix(rotation)
-          position.set(x, y, -z)
-          const blend = anchor.visible ? 0.55 : 1
-          anchor.position.lerp(position, blend)
-          anchor.quaternion.slerp(orientation, blend)
-          lastSeen = time
+        if (marker) {
+          if (!anchor.visible) trackedCorners = marker.corners.map(corner => ({ ...corner }))
+          const movement = Math.max(...marker.corners.map((corner, index) =>
+            Math.hypot(corner.x - trackedCorners[index].x, corner.y - trackedCorners[index].y)
+          ))
+          const cornerBlend = Math.min(0.85, 0.15 + movement * 0.1)
+          trackedCorners.forEach((corner, index) => {
+            corner.x += (marker.corners[index].x - corner.x) * cornerBlend
+            corner.y += (marker.corners[index].y - corner.y) * cornerBlend
+          })
+          const corners = trackedCorners.map(({ x, y }) => ({ x: x - frame.width / 2, y: frame.height / 2 - y }))
+          const { bestRotation, bestTranslation, bestError } = estimatePose.pose(corners)
+          const [x, y, z] = bestTranslation
+          if (Number.isFinite(bestError) && bestError >= 0 && bestError <= 5 && Number.isFinite(x + y + z) && z > 0) {
+            const [rowX, rowY, rowZ] = bestRotation
+            rotation.set(
+              rowX[0], rowX[1], -rowX[2], 0,
+              rowY[0], rowY[1], -rowY[2], 0,
+              -rowZ[0], -rowZ[1], rowZ[2], 0,
+              0, 0, 0, 1
+            )
+            orientation.setFromRotationMatrix(rotation).normalize()
+            position.set(x, y, -z)
+            if (!anchor.visible) {
+              anchor.position.copy(position)
+              anchor.quaternion.copy(orientation)
+            }
+            lastSeen = time
+          }
         }
       }
 
       const visible = time - lastSeen < 180
+      if (visible) {
+        const blend = 1 - Math.exp(-elapsed / 70)
+        anchor.position.lerp(position, blend)
+        anchor.quaternion.slerp(orientation, blend)
+      }
       if (visible !== anchor.visible) {
         anchor.visible = visible
         document.body.dataset.tracking = String(visible)
