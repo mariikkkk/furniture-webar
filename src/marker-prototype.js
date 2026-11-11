@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { AR } from 'js-aruco2'
 import { POS } from 'js-aruco2/src/posit1.js'
 import { createAssembly, lightScene } from './assembly.js'
+import { setupInstructions } from './instructions.js'
 
 const container = document.getElementById('camera')
 const viewport = document.getElementById('camera-viewport')
@@ -15,6 +16,8 @@ const markerId = 42
 const markerWidth = 1
 const searchMessage = 'Наведите камеру на квадратную метку целиком.'
 const foundMessage = 'Метка найдена. Держите все четыре угла в кадре.'
+const assembly = createAssembly()
+setupInstructions(assembly)
 
 function openCamera(deviceId) {
   const video = deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } }
@@ -60,8 +63,6 @@ start.addEventListener('click', async () => {
     scene.add(anchor)
     lightScene(scene)
 
-    const assembly = createAssembly()
-    assembly.showStep(3, 3)
     assembly.root.rotation.x = Math.PI / 2
     assembly.root.scale.setScalar(0.8)
     anchor.add(assembly.root)

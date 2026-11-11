@@ -3,13 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>AR по метке ArUco</title>
+  <title>Сборка табурета по метке</title>
   <style>
     body { margin: 0; height: 100dvh; display: grid; grid-template-rows: minmax(0, 1fr) auto; font: 16px/1.4 system-ui, sans-serif; color: #111; }
     #camera-viewport { display: grid; place-items: center; overflow: hidden; background: #111; }
     #camera { position: relative; width: 100%; height: 100%; overflow: hidden; isolation: isolate; }
     #camera video, #camera canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-    .panel { background: white; padding: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+    .panel { max-height: 55dvh; overflow: auto; box-sizing: border-box; background: white; padding: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+    [hidden] { display: none !important; }
+    h1 { margin: 0 0 4px; font-size: 18px; }
+    #step-number { font-size: 13px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 6px; }
     p { margin: 0 0 8px; }
     button, a { font: inherit; }
     button { min-height: 44px; }
@@ -21,9 +25,25 @@
   <div id="camera-viewport">
     <div id="camera" aria-label="Камера"></div>
   </div>
-  <section class="panel" aria-label="Проверка метки">
+  <section class="panel" aria-label="Инструкция по сборке">
     <p id="status" role="status">Положите квадратную метку на поверхность и наведите на неё камеру.</p>
     <button id="start" type="button">Открыть камеру</button>
+    <div id="instructions">
+      <div aria-live="polite">
+        <p id="step-number"></p>
+        <h1 id="step-title"></h1>
+        <p id="step-text"></p>
+        <p id="hardware" hidden>
+          <strong id="hardware-code"></strong>
+          <span id="hardware-text"></span>
+        </p>
+      </div>
+      <div class="controls">
+        <button id="back" type="button">Назад</button>
+        <button id="replay" type="button">Повторить</button>
+        <button id="next" type="button">Далее</button>
+      </div>
+    </div>
     <a href="./furniture-marker.svg" target="_blank" rel="noopener">Открыть метку</a>
     <a href="./">WebXR без метки</a>
     <details id="camera-details" hidden>
