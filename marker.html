@@ -21,8 +21,9 @@
     #step-title { font-size: 16px; }
     .controls { display: flex; flex-wrap: wrap; gap: 6px; }
     p { margin: 0 0 8px; }
-    button, select { font: inherit; min-height: 44px; }
+    button, select, input { font: inherit; min-height: 44px; }
     select { max-width: 100%; }
+    #marker-size { width: 72px; }
   </style>
 </head>
 <body>
@@ -36,6 +37,7 @@
       <summary>Камера</summary>
       <label id="camera-choice" hidden>Выбрать <select id="camera-device"></select></label>
       <p id="camera-info"></p>
+      <p><label>Сторона чёрного квадрата, см <input id="marker-size" type="number" min="1" max="100" step="0.1" value="12" inputmode="decimal" required></label></p>
     </details>
   </header>
   <section class="panel" aria-label="Инструкция по сборке">

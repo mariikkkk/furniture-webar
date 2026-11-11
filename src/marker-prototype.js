@@ -12,8 +12,8 @@ const cameraDetails = document.getElementById('camera-details')
 const cameraChoice = document.getElementById('camera-choice')
 const cameraDevice = document.getElementById('camera-device')
 const cameraInfo = document.getElementById('camera-info')
+const markerSize = document.getElementById('marker-size')
 const markerId = 42
-const markerWidth = 1
 const searchMessage = 'Наведите камеру на квадратную метку целиком.'
 const foundMessage = 'Метка найдена. Держите все четыре угла в кадре.'
 const assembly = createAssembly()
@@ -76,7 +76,6 @@ start.addEventListener('click', async () => {
     lightScene(scene)
 
     assembly.root.rotation.x = Math.PI / 2
-    assembly.root.scale.setScalar(0.8)
     anchor.add(assembly.root)
 
     const detector = new AR.Detector({ dictionaryName: 'ARUCO_MIP_36h12', maxHammingDistance: 3 })
@@ -86,6 +85,8 @@ start.addEventListener('click', async () => {
     const orientation = new THREE.Quaternion()
     const position = new THREE.Vector3()
     let estimatePose
+    if (!markerSize.checkValidity()) markerSize.value = '12'
+    let markerWidth = markerSize.valueAsNumber / 100
     let lastScan = -Infinity
     let lastSeen = -Infinity
 
@@ -153,6 +154,16 @@ start.addEventListener('click', async () => {
     const observer = new ResizeObserver(fitCamera)
     observer.observe(viewport)
     video.addEventListener('resize', fitCamera)
+    markerSize.addEventListener('change', () => {
+      if (!markerSize.reportValidity()) return
+      markerWidth = markerSize.valueAsNumber / 100
+      lastSeen = -Infinity
+      anchor.visible = false
+      document.body.dataset.tracking = 'false'
+      status.textContent = searchMessage
+      fitCamera()
+      renderer.render(scene, camera)
+    })
     renderer.setAnimationLoop(draw)
 
     const devices = await navigator.mediaDevices.enumerateDevices().catch(() => [])
